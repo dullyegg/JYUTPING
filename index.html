@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    
+    <!-- 手機 Add to Home Screen (PWA) 設定 -->
+    <title>聲母挑戰站</title>
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="聲母挑戰">
+    
+    <!-- iOS 桌面 LOGO 圖示 (使用高品質穩定 PNG 連結) -->
+    <link rel="apple-touch-icon" href="https://img.icons8.com/color/512/lips.png">
+    <link rel="icon" type="image/png" href="https://img.icons8.com/color/512/lips.png">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&display=swap');
+
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+            background-color: #111827;
+            color: #e0e0e0;
+            overflow: hidden;
+            height: 100vh;
+            width: 100vw;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* --- 按鈕基礎樣式 --- */
+        .btn-wrapper {
+            flex: 1; 
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 0; 
+            width: 100%;
+            padding: 1px;
+        }
+
+        .circle-btn {
+            background-color: #1f2937;
+            border: 2px solid #374151;
+            color: #9ca3af;
+            transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%; 
+            aspect-ratio: 1 / 1;
+            width: auto;
+            height: auto;
+            max-width: 100%;
+            max-height: 100%;
+            min-width: 80px; 
+            min-height: 80px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5);
+        }
+
+        .circle-btn .icon {
+            font-size: clamp(1.4rem, 3.5vh, 2.5rem); 
+            line-height: 1.1;
+            filter: drop-shadow(0 2px 2px rgba(0,0,0,0.5));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+        }
+        
+        .circle-btn .label {
+            font-size: clamp(0.7rem, 1.8vh, 1.1rem);
+            font-weight: bold;
+            line-height: 1;
+            text-align: center;
+            white-space: nowrap;
+            margin-top: 2px;
+        }
+
+        /* --- 狀態顏色：選取時 (亮白燈) --- */
+        .circle-btn.active {
+            background-color: #f3f4f6 !important;
+            color: #000 !important;
+            border-color: #fff !important;
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.9) !important;
+            transform: scale(1.05);
+            z-index: 20;
+        }
+
+        /* --- 狀態顏色：顯示答案 (紅綠燈) 強制覆蓋白色 --- */
+        .circle-btn.feedback-correct {
+            background-color: #22c55e !important; 
+            border-color: #86efac !important;
+            color: #fff !important;
+            box-shadow: 0 0 25px #22c55e !important;
+            transform: scale(1.1) !important;
+            z-index: 30;
+        }
+
+        .circle-btn.feedback-wrong {
+            background-color: #ef4444 !important;
+            border-color: #fca5a5 !important;
+            color: #fff !important;
+            box-shadow: 0 0 20px #ef4444 !important;
+            animation: shake 0.4s ease-in-out;
+            z-index: 29;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+
+        /* --- 題目卡樣式 --- */
+        .symbol-card {
+            background-color: #1f2937;
+            background-image: url('image.png');
+            background-size: cover;
+            background-position: center;
+            box-shadow: inset 0 0 30px #000, 0 10px 25px -5px rgba(0,0,0,0.5);
+            position: relative;
+            border-radius: 50%;
+            border: 4px solid #374151;
+            width: auto;
+            height: auto;
+            min-height: 180px; 
+            max-width: 100%;
+            max-height: 100%;
+            aspect-ratio: 1/1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+        }
+
+        #question-view { display: flex; align-items: center; justify-content: center; }
+        #result-view { display: none; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+
+        .symbol-text {
+            text-shadow: 0 4px 8px rgba(0,0,0,1);
+            font-size: clamp(4rem, 12vh, 8rem);
+            color: white;
+            font-weight: bold;
+        }
+
+        .main-grid {
+            display: grid;
+            grid-template-columns: 22fr 56fr 22fr; 
+            gap: 8px;
+            height: 100%;
+            padding: 4px 8px 8px 8px;
+            width: 100%;
+            max-width: 1400px; 
+            margin: 0 auto;
+        }
+
+        .vertical-stack {
+            display: flex;
+            flex-direction: column;
+            justify-content: space-evenly;
+            align-items: center;
+            height: 100%;
+        }
+
+        .flash-warning { animation: flashBorder 0.4s ease-in-out 3; }
+        @keyframes flashBorder {
+            0%, 100% { border-color: #374151; }
+            50% { border-color: #ef4444; box-shadow: 0 0 15px #ef4444; }
+        }
+    </style>
+</head>
+<body class="select-none bg-gradient-to-b from-gray-900 to-gray-800">
+
+    <header class="flex justify-between items-center px-4 py-1 shrink-0 h-[6vh] min-h-[35px] border-b border-gray-700/50">
+        <h1 class="text-lg md:text-xl font-bold text-white">聲母挑戰站</h1>
+        <div class="bg-gray-800/80 px-4 py-0.5 rounded-full border border-gray-600">
+            <span id="question-counter" class="text-lg font-mono text-cyan-400">1/10</span>
+        </div>
+    </header>
+
+    <div class="main-grid grow items-center">
+        <!-- 左：方法 -->
+        <div id="method-wrapper" class="w-full h-full bg-gray-800/30 rounded-2xl p-1 border border-white/5">
+            <h2 class="text-cyan-400 text-center text-xs font-bold mb-1 tracking-widest uppercase">方法</h2>
+            <div id="method-container" class="vertical-stack"></div>
+        </div>
+
+        <!-- 中：題目卡 + 送氣 + 按鈕 -->
+        <div class="w-full h-full flex flex-col items-center justify-between py-1 overflow-hidden">
+            <div class="flex-1 w-full flex items-center justify-center p-1">
+                <div class="symbol-card flex items-center justify-center" id="card-element">
+                    <div class="absolute inset-0 bg-black/40 z-0 rounded-full pointer-events-none"></div>
+                    <div id="question-view" class="z-10 relative">
+                        <span id="target-symbol" class="symbol-text"></span>
+                    </div>
+                    <div id="result-view" class="z-20 relative px-4">
+                        <div id="res-symbol" class="text-5xl md:text-7xl font-bold text-white mb-2 drop-shadow-lg"></div>
+                        <div id="res-desc" class="text-sm md:text-lg text-cyan-300 font-bold leading-tight"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="status-message" class="h-8 flex items-center justify-center font-bold text-green-400"></div>
+
+            <!-- 送氣按鈕區 (品字型) -->
+            <div class="grid grid-cols-2 grid-rows-2 gap-2 w-full shrink-0 h-[22vh] px-2">
+                <div class="btn-wrapper">
+                    <button class="circle-btn feature-btn" data-val="aspirated" onclick="selectFeat(this, 'aspirated')">
+                        <span class="icon">💨</span><span class="label">送氣</span>
+                    </button>
+                </div>
+                <div class="btn-wrapper">
+                    <button class="circle-btn feature-btn" data-val="unaspirated" onclick="selectFeat(this, 'unaspirated')">
+                        <span class="icon"><span style="font-size: 0.6em;">❌ 💨</span></span><span class="label">不送氣</span>
+                    </button>
+                </div>
+                <div class="btn-wrapper col-span-2">
+                    <button class="circle-btn feature-btn" data-val="na" onclick="selectFeat(this, 'na')">
+                        <span class="icon">🕳️</span><span class="label">不適用</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="w-full shrink-0 h-[7vh] mt-1">
+                <button onclick="checkAnswer()" id="check-btn" class="w-full h-full bg-blue-600 text-white font-bold rounded-2xl text-xl shadow-lg active:scale-95 transition-all">確認答案</button>
+                
+                <div id="retry-group" class="hidden w-full h-full flex gap-2">
+                    <button onclick="retry()" class="flex-1 bg-gray-600 text-white font-bold rounded-2xl text-sm md:text-base">🔄 再試一次</button>
+                    <button onclick="showAnswer(false)" class="flex-1 bg-yellow-600 text-white font-bold rounded-2xl text-sm md:text-base">👀 顯示答案</button>
+                </div>
+
+                <button onclick="nextQuestion()" id="next-btn" class="hidden w-full h-full bg-green-600 text-white font-bold rounded-2xl text-xl">下一題 &rarr;</button>
+            </div>
+        </div>
+
+        <!-- 右：部位 -->
+        <div id="place-wrapper" class="w-full h-full bg-gray-800/30 rounded-2xl p-1 border border-white/5">
+            <h2 class="text-pink-500 text-center text-xs font-bold mb-1 tracking-widest uppercase">部位</h2>
+            <div id="place-container" class="vertical-stack"></div>
+        </div>
+    </div>
+
+    <div id="score-modal" class="modal-backdrop hidden">
+        <div class="modal-content">
+            <h2 class="text-3xl font-bold text-white mb-4">挑戰完成！</h2>
+            <div class="bg-gray-800 rounded-xl p-4 mb-6 border border-gray-700">
+                <div class="text-6xl font-mono font-bold text-yellow-400" id="final-score">0</div>
+            </div>
+            <button onclick="restart()" class="w-full py-3 bg-green-600 text-white font-bold rounded-xl">再來一次</button>
+        </div>
+    </div>
+
+    <script>
+        // --- 核心資料與圖示 ---
+        const icons = {
+            '爆發': '💥', '摩擦': '🪥', '塞擦': '<span style="font-size:0.6em">🪠🪥</span>',
+            '鼻音': '👃', '邊音': '↔️', '半元音': '🌗',
+            '嘴唇': '👄', '牙齒': '🦷', '舌頭': '👅', '上顎': '🐊', '喉頭': '🗣️'
+        };
+
+        const methods = ['爆發', '摩擦', '塞擦', '鼻音', '邊音', '半元音'];
+        const places = ['嘴唇', '牙齒', '舌頭', '上顎', '喉頭'];
+        const data = [
+            { s: 'b', m: '爆發', p: ['嘴唇'], a: 'unaspirated', d: '雙脣音' },
+            { s: 'p', m: '爆發', p: ['嘴唇'], a: 'aspirated', d: '雙脣音' },
+            { s: 'm', m: '鼻音', p: ['嘴唇'], a: 'na', d: '雙脣音' },
+            { s: 'f', m: '摩擦', p: ['嘴唇', '牙齒'], a: 'na', d: '脣齒音' },
+            { s: 'd', m: '爆發', p: ['舌頭', '牙齒'], a: 'unaspirated', d: '齒齦音' },
+            { s: 't', m: '爆發', p: ['舌頭', '牙齒'], a: 'aspirated', d: '齒齦音' },
+            { s: 'n', m: '鼻音', p: ['舌頭', '牙齒'], a: 'na', d: '齒齦音' },
+            { s: 'l', m: '邊音', p: ['舌頭', '牙齒'], a: 'na', d: '齒齦音' },
+            { s: 'z', m: '塞擦', p: ['舌頭', '牙齒'], a: 'unaspirated', d: '齒齦音' },
+            { s: 'c', m: '塞擦', p: ['舌頭', '牙齒'], a: 'aspirated', d: '齒齦音' },
+            { s: 's', m: '摩擦', p: ['舌頭', '牙齒'], a: 'na', d: '齒齦音' },
+            { s: 'j', m: '半元音', p: ['舌頭', '上顎'], a: 'na', d: '硬齶音' },
+            { s: 'g', m: '爆發', p: ['舌頭', '上顎'], a: 'unaspirated', d: '軟齶音' },
+            { s: 'k', m: '爆發', p: ['舌頭', '上顎'], a: 'aspirated', d: '軟齶音' },
+            { s: 'ng', m: '鼻音', p: ['舌頭', '上顎'], a: 'na', d: '軟齶音' },
+            { s: 'h', m: '摩擦', p: ['喉頭'], a: 'na', d: '喉音' },
+            { s: 'gw', m: '爆發', p: ['嘴唇', '舌頭', '上顎'], a: 'unaspirated', d: '軟齶音' },
+            { s: 'kw', m: '爆發', p: ['嘴唇', '舌頭', '上顎'], a: 'aspirated', d: '軟齶音' },
+            { s: 'w', m: '半元音', p: ['嘴唇', '上顎'], a: 'na', d: '雙脣音' }
+        ];
+
+        let qIdx = 0, score = 0, queue = [], user = { m: null, p: [], a: null }, isCheck = false;
+
+        function renderButtons() {
+            const mc = document.getElementById('method-container'), pc = document.getElementById('place-container');
+            mc.innerHTML = ''; pc.innerHTML = '';
+            methods.forEach(m => mc.innerHTML += `<div class="btn-wrapper"><button class="circle-btn method-btn" data-val="${m}" onclick="selectMethod(this, '${m}')"><span class="icon">${icons[m]}</span><span class="label">${m}</span></button></div>`);
+            places.forEach(p => pc.innerHTML += `<div class="btn-wrapper"><button class="circle-btn place-btn" data-val="${p}" onclick="togglePlace(this, '${p}')"><span class="icon">${icons[p]}</span><span class="label">${p}</span></button></div>`);
+        }
+
+        function restart() {
+            score = 0; qIdx = 0; queue = [...data].sort(() => 0.5 - Math.random()).slice(0, 10);
+            document.getElementById('score-modal').classList.add('hidden');
+            loadQ();
+        }
+
+        function loadQ() {
+            isCheck = false; user = { m: null, p: [], a: null };
+            document.getElementById('question-view').style.display = 'flex';
+            document.getElementById('result-view').style.display = 'none';
+            document.getElementById('status-message').textContent = '';
+            document.getElementById('check-btn').classList.remove('hidden');
+            document.getElementById('retry-group').classList.add('hidden');
+            document.getElementById('next-btn').classList.add('hidden');
+            document.getElementById('card-element').className = 'symbol-card flex items-center justify-center group shrink-1';
+            document.querySelectorAll('button').forEach(b => b.classList.remove('active', 'feedback-correct', 'feedback-wrong', 'flash-warning'));
+            document.getElementById('question-counter').textContent = `${qIdx + 1}/10`;
+            document.getElementById('target-symbol').textContent = queue[qIdx].s;
+        }
+
+        function selectMethod(btn, val) { if(isCheck) return; user.m = val; document.querySelectorAll('.method-btn').forEach(b => b.classList.remove('active')); btn.classList.add('active'); }
+        function togglePlace(btn, val) { if(isCheck) return; const i = user.p.indexOf(val); if(i > -1) { user.p.splice(i, 1); btn.classList.remove('active'); } else { user.p.push(val); btn.classList.add('active'); } }
+        function selectFeat(btn, val) { if(isCheck) return; user.a = val; document.querySelectorAll('.feature-btn').forEach(b => b.classList.remove('active')); btn.classList.add('active'); }
+
+        function retry() {
+            isCheck = false;
+            document.getElementById('question-view').style.display = 'flex';
+            document.getElementById('result-view').style.display = 'none';
+            document.getElementById('card-element').classList.remove('card-wrong');
+            document.getElementById('check-btn').classList.remove('hidden');
+            document.getElementById('retry-group').classList.add('hidden');
+            document.querySelectorAll('button').forEach(b => b.classList.remove('feedback-correct', 'feedback-wrong'));
+        }
+
+        function checkAnswer() {
+            if(!user.m || user.p.length === 0 || !user.a) {
+                if(!user.m) document.getElementById('method-wrapper').classList.add('flash-warning');
+                if(user.p.length === 0) document.getElementById('place-wrapper').classList.add('flash-warning');
+                return;
+            }
+            const corr = queue[qIdx];
+            const pOk = corr.p.every(v => user.p.includes(v)) && user.p.every(v => corr.p.includes(v));
+            const isCorr = pOk && user.m === corr.m && user.a === corr.a;
+
+            if(isCorr) { score += 10; showAnswer(true); }
+            else {
+                document.getElementById('question-view').style.display = 'none';
+                document.getElementById('card-element').classList.add('card-wrong');
+                document.getElementById('check-btn').classList.add('hidden');
+                document.getElementById('retry-group').classList.remove('hidden');
+            }
+        }
+
+        function showAnswer(wasCorrect) {
+            isCheck = true; const corr = queue[qIdx];
+            document.querySelectorAll('.method-btn').forEach(b => { if(b.dataset.val === corr.m) b.classList.add('feedback-correct'); else if(b.classList.contains('active')) b.classList.add('feedback-wrong'); });
+            document.querySelectorAll('.place-btn').forEach(b => { if(corr.p.includes(b.dataset.val)) b.classList.add('feedback-correct'); else if(b.classList.contains('active')) b.classList.add('feedback-wrong'); });
+            document.querySelectorAll('.feature-btn').forEach(b => { if(b.dataset.val === corr.a) b.classList.add('feedback-correct'); else if(b.classList.contains('active')) b.classList.add('feedback-wrong'); });
+
+            if(wasCorrect) { 
+                document.getElementById('status-message').textContent = '正確'; 
+                document.getElementById('card-element').classList.add('card-correct'); 
+            }
+            document.getElementById('question-view').style.display = 'none';
+            document.getElementById('result-view').style.display = 'flex';
+            document.getElementById('res-symbol').textContent = corr.s;
+            document.getElementById('res-desc').innerHTML = `<span class="text-gray-300 text-sm block mb-1">這是一個</span><span class="text-2xl text-cyan-300 block font-bold">${corr.d}</span>`;
+            document.getElementById('check-btn').classList.add('hidden');
+            document.getElementById('retry-group').classList.add('hidden');
+            if(qIdx < 9) document.getElementById('next-btn').classList.remove('hidden'); else showFinal();
+        }
+
+        function nextQuestion() { qIdx++; loadQ(); }
+        function showFinal() { document.getElementById('final-score').textContent = score; document.getElementById('score-modal').classList.remove('hidden'); }
+
+        window.onload = () => { renderButtons(); restart(); };
+    </script>
+</body>
+</html>
