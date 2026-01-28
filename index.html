@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+    <meta charset="UTF-8">
+    <!-- 修正 viewport：加入 viewport-fit=cover 以適應 iPhone 瀏海屏，並鎖定縮放 -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>聲母挑戰站</title>
+    
+    <!-- ========================================================================= -->
+    <!--  【手機主畫面 LOGO 設定區 - 修正版】                                       -->
+    <!--   注意：請製作一張 512x512 像素的 PNG圖片，命名為 icon.png                     -->
+    <!--   確保圖片有「實色背景」(例如白色或深灰)，不要透明，否則 iOS 會變全黑。            -->
+    <!--   將 icon.png 上傳到與此 index.html 同一個資料夾內。                          -->
+    <!-- ========================================================================= -->
+    
+    <!-- 1. 主畫面圖示 (iOS 專用) - 使用本地檔案 -->
+    <link rel="apple-touch-icon" sizes="180x180" href="icon.png">
+    
+    <!-- 2. 瀏覽器分頁圖示 -->
+    <link rel="icon" type="image/png" href="icon.png">
+
+    <!-- 3. Web App 設定 -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <!-- 將狀態列改為 default (白底黑字) 或 black-translucent (沉浸式) -->
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="聲母挑戰">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&display=swap');
+
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+            background-color: #111827;
+            color: #e0e0e0;
+            overflow: hidden;
+            height: 100vh;
+            width: 100vw;
+            display: flex;
+            flex-direction: column;
+            /* 確保在 iPhone 全螢幕模式下不會被瀏海擋住 */
+            padding-top: env(safe-area-inset-top);
+            padding-bottom: env(safe-area-inset-bottom);
+        }
+
+        /* --- 按鈕基礎樣式 --- */
+        .btn-wrapper {
+            flex: 1; 
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 0; 
+            width: 100%;
+            padding: 1px;
+        }
+
+        .circle-btn {
+            background-color: #1f2937;
+            border: 2px solid #374151;
+            color: #9ca3af;
+            transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%; 
+            aspect-ratio: 1 / 1;
+            width: auto;
+            height: auto;
+            max-width: 100%;
+            max-height: 100%;
+            min-width: 80px; 
+            min-height: 80px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5);
+            /* 修正 iOS 點擊閃爍問題 */
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .circle-btn:active { transform: scale(0.95); }
+
+        .circle-btn .icon {
+            font-size: clamp(1.5rem, 3.5vh, 2.8rem); 
+            margin-bottom: 2%; 
+            line-height: 1.1;
+            filter: drop-shadow(0 2px 2px rgba(0,0,0,0.5));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+        }
+        
+        .circle-btn .label {
+            font-size: clamp(0.7rem, 1.8vh, 1.1rem);
+            font-weight: bold;
+            line-height: 1;
+            text-align: center;
+            white-space: nowrap;
+            margin-top: 2px;
+        }
+
+        /* --- 狀態燈號控制 (強制覆蓋) --- */
+
+        /* 1. 選取時：亮白燈 (優先級 20) */
+        .circle-btn.active {
+            background-color: #f3f4f6 !important;
+            color: #000 !important;
+            border-color: #fff !important;
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.9) !important;
+            transform: scale(1.05);
+            z-index: 20;
+        }
+
+        /* 2. 顯示答案：正確亮綠燈 (優先級 30，必須蓋過 active) */
+        .circle-btn.feedback-correct {
+            background-color: #22c55e !important; 
+            border-color: #86efac !important;
+            color: #fff !important;
+            box-shadow: 0 0 25px #22c55e !important;
+            transform: scale(1.1) !important;
+            z-index: 30;
+        }
+
+        /* 3. 顯示答案：選錯由白轉紅 (優先級 29，必須蓋過 active) */
+        .circle-btn.feedback-wrong {
+            background-color: #ef4444 !important;
+            border-color: #fca5a5 !important;
+            color: #fff !important;
+            box-shadow: 0 0 20px #ef4444 !important;
+            animation: shake 0.4s ease-in-out;
+            z-index: 29;
+        }
+
+        /* Feature Buttons 樣式修正 (置中) */
+        .feature-btn {
+            background-color: #1f2937;
+            border: 2px solid #4b5563;
+            justify-content: center; 
+            padding-bottom: 0; 
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+
+        /* 題目卡 */
+        .symbol-card {
+            background-color: #1f2937;
+            /* 移除 image.png，改用 CSS 漸層避免找不到圖片時難看 */
+            background: radial-gradient(circle at center, #374151 0%, #1f2937 100%);
+            box-shadow: inset 0 0 30px #000, 0 10px 25px -5px rgba(0,0,0,0.5);
+            position: relative;
+            border-radius: 50%;
+            border: 4px solid #374151;
+            width: auto;
+            height: auto;
+            min-height: 180px; 
+            max-width: 100%;
+            max-height: 100%;
+            aspect-ratio: 1/1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+        }
+
+        #question-view { display: flex; align-items: center; justify-content: center; }
+        #result-view { display: none; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+
+        .symbol-text {
+            text-shadow: 0 4px 8px rgba(0,0,0,1);
+            font-size: clamp(4rem, 12vh, 8rem);
+            color: white;
+            font-weight: bold;
+        }
+
+        .card-correct {
+            border-color: #22c55e !important;
+            box-shadow: 0 0 30px #22c55e, inset 0 0 20px #22c55e !important;
+        }
+        .card-wrong {
+            border-color: #ef4444 !important;
+            box-shadow: 0 0 30px #ef4444, inset 0 0 20px #ef4444 !important;
+        }
+        
+        .main-grid {
+            display: grid;
+            grid-template-columns: 22fr 56fr 22fr; 
+            gap: 8px;
+            height: 100%;
+            padding: 4px 8px 8px 8px;
+            width: 100%;
+            max-width: 1400px; 
+            margin: 0 auto;
+        }
+
+        .vertical-stack {
+            display: flex;
+            flex-direction: column;
+            justify-content: space-evenly;
+            align-items: center;
+            height: 100%;
+        }
+
+        .flash-warning { animation: flashBorder 0.4s ease-in-out 3; }
+        @keyframes flashBorder {
+            0%, 100% { border-color: #374151; }
+            50% { border-color: #ef4444; box-shadow: 0 0 15px #ef4444; }
+        }
+
+        /* Modal Styles */
+        .modal-backdrop {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.85);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+        }
+        .modal-content {
+            background: #1f2937;
+            border: 2px solid #4b5563;
+            padding: 2rem;
+            border-radius: 1.5rem;
+            text-align: center;
+            max-width: 90%;
+            width: 400px;
+        }
+
+        @media (max-width: 768px) {
+            .main-grid {
+                grid-template-columns: 20fr 60fr 20fr;
+                gap: 4px;
+                padding: 4px;
+            }
+            .circle-btn {
+                min-width: 60px;
+                min-height: 60px;
+            }
+            .symbol-text {
+                font-size: clamp(3rem, 10vh, 5rem);
+            }
+        }
+    </style>
+</head>
+<body class="select-none bg-gradient-to-b from-gray-900 to-gray-800">
+
+    <header class="flex justify-between items-center px-4 py-1 shrink-0 h-[6vh] min-h-[45px] border-b border-gray-700/50">
+        <h1 class="text-lg md:text-xl font-bold text-white">聲母挑戰站</h1>
+        <div class="bg-gray-800/80 px-4 py-0.5 rounded-full border border-gray-600">
+            <span id="question-counter" class="text-lg font-mono text-cyan-400">1/10</span>
+        </div>
+    </header>
+
+    <div class="main-grid grow items-center">
+        <!-- 左：方法 -->
+        <div id="method-wrapper" class="w-full h-full bg-gray-800/30 rounded-2xl p-1 border border-white/5">
+            <h2 class="text-cyan-400 text-center text-xs font-bold mb-1 tracking-widest uppercase">方法</h2>
+            <div id="method-container" class="vertical-stack grow"></div>
+        </div>
+
+        <!-- 中：題目卡 + 狀態 + 送氣按鈕 -->
+        <div class="w-full h-full flex flex-col items-center justify-between py-1 overflow-hidden">
+            <div class="flex-1 w-full flex items-center justify-center p-1">
+                <div class="symbol-card flex items-center justify-center" id="card-element">
+                    <div class="absolute inset-0 bg-black/40 z-0 rounded-full pointer-events-none"></div>
+                    
+                    <div id="question-view" class="z-10 relative flex items-center justify-center">
+                        <span id="target-symbol" class="symbol-text"></span>
+                    </div>
+
+                    <div id="result-view" class="z-20 relative hidden text-center px-4">
+                        <div id="res-symbol" class="text-5xl md:text-7xl font-bold text-white mb-2"></div>
+                        <div id="res-desc" class="text-sm md:text-lg text-cyan-300 font-bold leading-tight"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 狀態訊息區 (正確) -->
+            <div id="status-message" class="h-8 flex items-center justify-center font-bold text-green-400"></div>
+
+            <!-- 送氣按鈕區 -->
+            <div class="grid grid-cols-2 grid-rows-2 gap-2 w-full shrink-0 h-[22vh] px-2">
+                <div class="btn-wrapper">
+                    <button class="circle-btn feature-btn" data-val="aspirated" onclick="selectFeat(this, 'aspirated')">
+                        <span class="icon">💨</span><span class="label">送氣</span>
+                    </button>
+                </div>
+                <div class="btn-wrapper">
+                    <button class="circle-btn feature-btn" data-val="unaspirated" onclick="selectFeat(this, 'unaspirated')">
+                        <!-- Logo 縮小並確保置中 -->
+                        <span class="icon"><span style="font-size: 0.6em;">❌ 💨</span></span><span class="label">不送氣</span>
+                    </button>
+                </div>
+                <div class="btn-wrapper col-span-2">
+                    <button class="circle-btn feature-btn" data-val="na" onclick="selectFeat(this, 'na')">
+                        <span class="icon">🕳️</span><span class="label">不適用</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="w-full shrink-0 h-[7vh] mt-1">
+                <button onclick="checkAnswer()" id="check-btn" class="w-full h-full bg-blue-600 text-white font-bold rounded-2xl text-xl shadow-lg active:scale-95 transition-all">確認答案</button>
+                
+                <div id="retry-group" class="hidden w-full h-full flex gap-2">
+                    <button onclick="retry()" class="flex-1 bg-gray-600 text-white font-bold rounded-2xl text-sm md:text-base">🔄 再試一次</button>
+                    <button onclick="showAnswer(false)" class="flex-1 bg-yellow-600 text-white font-bold rounded-2xl text-sm md:text-base">👀 顯示答案</button>
+                </div>
+
+                <button onclick="nextQuestion()" id="next-btn" class="hidden w-full h-full bg-green-600 text-white font-bold rounded-2xl text-xl">下一題 &rarr;</button>
+                
+                <button onclick="showFinalScore()" id="finish-btn" class="hidden w-full h-full bg-yellow-600 text-white font-bold rounded-2xl text-xl">查看成績</button>
+            </div>
+        </div>
+
+        <!-- 右：部位 -->
+        <div id="place-wrapper" class="w-full h-full bg-gray-800/30 rounded-2xl p-1 border border-white/5">
+            <h2 class="text-pink-500 text-center text-xs font-bold mb-1 tracking-widest uppercase">部位</h2>
+            <div id="place-container" class="vertical-stack grow"></div>
+        </div>
+    </div>
+
+    <!-- 結算 -->
+    <div id="score-modal" class="modal-backdrop hidden">
+        <div class="modal-content">
+            <h2 class="text-3xl font-bold text-white mb-4">挑戰完成！</h2>
+            <div class="bg-gray-800 rounded-xl p-4 mb-6">
+                <div class="text-6xl font-mono font-bold text-yellow-400" id="final-score">0</div>
+            </div>
+            <button onclick="restart()" class="w-full py-3 bg-green-600 text-white font-bold rounded-xl">再來一次</button>
+        </div>
+    </div>
+
+    <script>
+        const icons = {
+            '爆發': '💥', '摩擦': '🪥', '塞擦': '<span style="font-size:0.6em">🪠🪥</span>',
+            '鼻音': '👃', '邊音': '↔️', '半元音': '🌗',
+            '嘴唇': '👄', '牙齒': '🦷', '舌頭': '👅', '上顎': '🐊', '喉頭': '🗣️'
+        };
+
+        const methods = ['爆發', '摩擦', '塞擦', '鼻音', '邊音', '半元音'];
+        const places = ['嘴唇', '牙齒', '舌頭', '上顎', '喉頭'];
+        const phoneticDescriptions = {
+            'b': '雙脣音', 'p': '雙脣音', 'm': '雙脣音', 'w': '雙脣音',
+            'f': '脣齒音',
+            'd': '齒齦音', 't': '齒齦音', 'z': '齒齦音', 'c': '齒齦音', 'n': '齒齦音', 's': '齒齦音', 'l': '齒齦音',
+            'j': '硬齶音',
+            'g': '軟齶音', 'k': '軟齶音', 'gw': '軟齶音', 'kw': '軟齶音', 'ng': '軟齶音',
+            'h': '喉音'
+        };
+
+        // 資料庫 (已修正：f/h 為不適用)
+        const data = [
+            { s: 'b', m: '爆發', p: ['嘴唇'], a: 'unaspirated' },
+            { s: 'p', m: '爆發', p: ['嘴唇'], a: 'aspirated' },
+            { s: 'm', m: '鼻音', p: ['嘴唇'], a: 'na' }, 
+            { s: 'f', m: '摩擦', p: ['嘴唇', '牙齒'], a: 'na' }, 
+            { s: 'd', m: '爆發', p: ['舌頭', '牙齒'], a: 'unaspirated' },
+            { s: 't', m: '爆發', p: ['舌頭', '牙齒'], a: 'aspirated' },
+            { s: 'n', m: '鼻音', p: ['舌頭', '牙齒'], a: 'na' }, 
+            { s: 'l', m: '邊音', p: ['舌頭', '牙齒'], a: 'na' }, 
+            { s: 'z', m: '塞擦', p: ['舌頭', '牙齒'], a: 'unaspirated' },
+            { s: 'c', m: '塞擦', p: ['舌頭', '牙齒'], a: 'aspirated' },
+            { s: 's', m: '摩擦', p: ['舌頭', '牙齒'], a: 'na' }, 
+            { s: 'j', m: '半元音', p: ['舌頭', '上顎'], a: 'na' }, 
+            { s: 'g', m: '爆發', p: ['舌頭', '上顎'], a: 'unaspirated' },
+            { s: 'k', m: '爆發', p: ['舌頭', '上顎'], a: 'aspirated' },
+            { s: 'ng', m: '鼻音', p: ['舌頭', '上顎'], a: 'na' }, 
+            { s: 'h', m: '摩擦', p: ['喉頭'], a: 'na' }, 
+            { s: 'gw', m: '爆發', p: ['嘴唇', '舌頭', '上顎'], a: 'unaspirated' },
+            { s: 'kw', m: '爆發', p: ['嘴唇', '舌頭', '上顎'], a: 'aspirated' },
+            { s: 'w', m: '半元音', p: ['嘴唇', '上顎'], a: 'na' } 
+        ];
+
+        let qIdx = 0, score = 0, queue = [], userSelection = { m: null, p: [], a: null }, isCheck = false;
+        let currentScore = 0; // Fixed variable scope issue
+
+        function renderButtons() {
+            const mc = document.getElementById('method-container'), pc = document.getElementById('place-container');
+            mc.innerHTML = ''; pc.innerHTML = '';
+            methods.forEach(m => mc.innerHTML += `<div class="btn-wrapper"><button class="circle-btn method-btn" data-val="${m}" onclick="selectMethod(this, '${m}')"><span class="icon">${icons[m]}</span><span class="label">${m}</span></button></div>`);
+            places.forEach(p => pc.innerHTML += `<div class="btn-wrapper"><button class="circle-btn place-btn" data-val="${p}" onclick="togglePlace(this, '${p}')"><span class="icon">${icons[p]}</span><span class="label">${p}</span></button></div>`);
+        }
+
+        function restart() {
+            score = 0; currentScore = 0; qIdx = 0; queue = [...data].sort(() => 0.5 - Math.random()).slice(0, 10);
+            document.getElementById('score-modal').classList.add('hidden');
+            loadQ();
+        }
+
+        function loadQ() {
+            isCheck = false; userSelection = { m: null, p: [], a: null };
+            document.getElementById('question-view').style.display = 'flex';
+            document.getElementById('result-view').style.display = 'none';
+            document.getElementById('status-message').textContent = '';
+            document.getElementById('check-btn').classList.remove('hidden');
+            document.getElementById('retry-group').classList.add('hidden');
+            document.getElementById('next-btn').classList.add('hidden');
+            document.getElementById('finish-btn').classList.add('hidden');
+            document.getElementById('card-element').className = 'symbol-card flex items-center justify-center group shrink-1';
+            document.querySelectorAll('button').forEach(b => b.classList.remove('active', 'feedback-correct', 'feedback-wrong', 'flash-warning'));
+            document.getElementById('question-counter').textContent = `${qIdx + 1}/10`;
+            document.getElementById('target-symbol').textContent = queue[qIdx].s;
+        }
+
+        function selectMethod(btn, val) { if(isCheck) return; userSelection.m = val; document.querySelectorAll('.method-btn').forEach(b => b.classList.remove('active')); btn.classList.add('active'); }
+        function togglePlace(btn, val) { if(isCheck) return; const i = userSelection.p.indexOf(val); if(i > -1) { userSelection.p.splice(i, 1); btn.classList.remove('active'); } else { userSelection.p.push(val); btn.classList.add('active'); } }
+        function selectFeat(btn, val) { if(isCheck) return; userSelection.a = val; document.querySelectorAll('.feature-btn').forEach(b => b.classList.remove('active')); btn.classList.add('active'); }
+
+        function retry() {
+            isCheck = false;
+            document.getElementById('question-view').style.display = 'flex';
+            document.getElementById('result-view').style.display = 'none';
+            document.getElementById('card-element').classList.remove('card-wrong');
+            document.getElementById('check-btn').classList.remove('hidden');
+            document.getElementById('retry-group').classList.add('hidden');
+            document.querySelectorAll('button').forEach(b => b.classList.remove('feedback-correct', 'feedback-wrong'));
+        }
+
+        function checkAnswer() {
+            if(!userSelection.m || userSelection.p.length === 0 || !userSelection.a) {
+                if(!userSelection.m) document.getElementById('method-wrapper').classList.add('flash-warning');
+                if(userSelection.p.length === 0) document.getElementById('place-wrapper').classList.add('flash-warning');
+                if(!userSelection.a) document.querySelectorAll('.feature-btn').forEach(b => b.classList.add('flash-warning'));
+                setTimeout(() => document.querySelectorAll('.flash-warning').forEach(e => e.classList.remove('flash-warning')), 1200);
+                return;
+            }
+            const corr = queue[qIdx];
+            const pOk = corr.p.every(v => userSelection.p.includes(v)) && userSelection.p.every(v => corr.p.includes(v));
+            const isCorr = pOk && userSelection.m === corr.m && userSelection.a === corr.a;
+
+            if(isCorr) { currentScore += 10; showAnswer(true); }
+            else {
+                document.getElementById('question-view').style.display = 'none';
+                document.getElementById('card-element').classList.add('card-wrong');
+                document.getElementById('check-btn').classList.add('hidden');
+                document.getElementById('retry-group').classList.remove('hidden');
+            }
+        }
+
+        function showAnswer(wasCorrect) {
+            isCheck = true; const corr = queue[qIdx];
+
+            const applyFeedback = (btn, isCorrectOption) => {
+                if (isCorrectOption) {
+                    btn.classList.add('feedback-correct');
+                    btn.classList.remove('feedback-wrong');
+                } else if (btn.classList.contains('active')) {
+                    btn.classList.add('feedback-wrong');
+                    btn.classList.remove('feedback-correct');
+                }
+            };
+
+            document.querySelectorAll('.method-btn').forEach(b => applyFeedback(b, b.dataset.val === corr.m));
+            document.querySelectorAll('.place-btn').forEach(b => applyFeedback(b, corr.p.includes(b.dataset.val)));
+            document.querySelectorAll('.feature-btn').forEach(b => applyFeedback(b, b.dataset.val === corr.a));
+
+            document.getElementById('question-view').style.display = 'none';
+            document.getElementById('result-view').style.display = 'flex';
+            document.getElementById('res-symbol').textContent = corr.s;
+            document.getElementById('res-desc').innerHTML = `<span class="text-gray-300 text-sm block mb-1">這是一個</span><span class="text-2xl text-cyan-300 block font-bold">${phoneticDescriptions[corr.s]}</span>`;
+
+            if (wasCorrect) {
+                document.getElementById('status-message').textContent = '正確';
+                document.getElementById('card-element').classList.add('card-correct');
+            } else {
+                document.getElementById('status-message').textContent = '';
+                document.getElementById('card-element').classList.add('card-wrong');
+            }
+
+            document.getElementById('check-btn').classList.add('hidden');
+            document.getElementById('retry-group').classList.add('hidden');
+            
+            if (qIdx < 9) document.getElementById('next-btn').classList.remove('hidden');
+            else document.getElementById('finish-btn').classList.remove('hidden');
+        }
+
+        function nextQuestion() {
+            qIdx++;
+            loadQ();
+        }
+
+        function showFinalScore() {
+            document.getElementById('final-score').textContent = currentScore;
+            document.getElementById('score-modal').classList.remove('hidden');
+        }
+
+        window.onload = () => { renderButtons(); restart(); };
+    </script>
+</body>
+</html>
